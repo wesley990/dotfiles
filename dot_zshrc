@@ -105,5 +105,32 @@ export EDITOR='nvim'
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-export FZF_DEFAULT_COMMAND="fd --type file --color=always --exclude .git"
-export FZF_DEFAULT_OPTS="--ansi"
+# =========================================================
+#  Modern, Robust, and Performant Zsh Configuration
+# ---------------------------------------------------------
+#  * Uses fzf, fd, ripgrep (rg), bat, eza, pure prompt
+#  * Fine‑tuned history, keybindings, aliases, and helpers
+#  * Extensive comments for future maintenance
+# =========================================================
+
+# ------------------------------------------------------------------
+# 1️⃣  Basic Zsh Options & History
+# ------------------------------------------------------------------
+setopt autocd                  # `cd dir` → `cd dir`
+setopt correct                 # Auto‑correct mistyped commands
+setopt histignoredups          # Do not store duplicate history lines
+setopt sharehistory            # Share history live between all shells
+setopt pushdminus              # `cd -` behaves like in bash
+setopt pushdtohome             # `cd` with no args goes to $HOME
+setopt histreduceblanks        # Trim extra spaces in history entries
+setopt extendedhistory         # Store timestamps & command duration
+setopt extendedglob            # Adds vi‑style globbing
+setopt nomatch                 # Turns off the “no glob match error”
+setopt notify                  # Enables asynchronous‑job notifications
+
+# History file configuration
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+
+unsetopt beep
