@@ -513,3 +513,16 @@ function fzf_git() {
   [[ -n "$file" ]] && ${EDITOR:-nvim} "$file"
 }
 
+
+# ------------------------------------------------------------------
+# 6️⃣  Keybindings – zle widgets
+# ------------------------------------------------------------------
+# Register the functions as widgets before binding
+zle -N fzf_cd
+zle -N fzf_git
+zle -N fco_info
+
+# Choose keys that are unlikely to clash with normal shell editing
+bindkey '^Xf' fzf_cd          # Ctrl‑X then f – fuzzy cd
+bindkey '^Xg' fzf_git         # Ctrl‑X then g – fuzzy git file
+bindkey '^Xc' gco_info        # Ctrl‑X then c – fuzzy checkout with preview
