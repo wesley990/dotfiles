@@ -350,14 +350,14 @@ function gwtr() {
 # ------------------------------------------------------------------------------
 # § 4. DYNAMIC TAB COMPLETION SCRIPT
 # ------------------------------------------------------------------------------
-# This script creates a 'g' command that acts as a dispatcher for all other
+# This script creates a 'gha' command that acts as a dispatcher for all other
 # git aliases and provides a helpful, descriptive tab-completion menu.
 
-# Step 1: Define the descriptions for all your 'g' aliases.
+# Step 1: Define the descriptions for all your 'gha' aliases.
 # This is the single source of truth for the completion menu.
-# The key is the part of the alias *after* 'g' (e.g., for 'gco', the key is 'co').
-typeset -A _g_aliases
-_g_aliases=(
+# The key is the part of the alias *after* 'gha' (e.g., for 'ghaco', the key is 'co').
+typeset -A _gha_aliases
+_gha_aliases=(
   # Status
   st    "status"
   ss    "status -s (short, staged status)"
@@ -402,20 +402,23 @@ _g_aliases=(
   wtp   "worktree prune"
 )
 
-# Step 2: Create the 'g' dispatcher function.
-# This allows you to type `g co my-branch` which it will execute as `gco my-branch`.
-# It also acts as a transparent wrapper, so `g diff` works just like `git diff`.
-function g() {
+# Step 2: Create the 'gha' dispatcher function.
+# This allows you to type `gha co my-branch` which it will execute as `ghaco my-branch`.
+# It also acts as a transparent wrapper, so `gha diff` works just like `git diff`.
+
+function gha() {
   # No args → show status (quick overview)
   if [[ $# -eq 0 ]]; then
-    git status -s
+    git status --short --branch
     return
+  else
+    git "$@"
   fi
 
-  local sub="${1}"          # e.g. "co" from `g co foo`
+  local sub="${1}"          # e.g. "co" from `gha co foo`
   shift
 
-  local target="g$sub"
+  local target="gha$sub"
 
   # Resolve the name that zsh will actually run:
   # * If it’s an alias, use `eval` so the alias expands.
@@ -434,18 +437,20 @@ function g() {
 }
  
 
-# Step 3: Define the completion function for our 'g' command.
-# This function reads the _g_aliases array and formats it for Zsh's completion system.
-_g_completions() {
+# Step 3: Define the completion function for our 'gha' command.
+# This function reads the _gha_aliases array and formats it for Zsh's completion system.
+_gha_completions() {
   local -a words
-  for key value in ${(kv)_g_aliases}; do
+  for key value in ${(kv)_gha_aliases}; do
     words+=("$key:$value")
   done
-  _describe 'g commands' words
+  _describe 'gha commands' words
 }
 
-# Step 4: Tie the completion function to the 'g' command.
-compdef _g_completions g
+# Step 4: Tie the completion function to the 'gha' command.
+autoload -Uz compinit && compinit
+#compdef _g_completions g
+compdef gha=_gha_completion
 
 # ==============================================================================
 # § END OF GIT CONFIGURATION
