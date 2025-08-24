@@ -161,6 +161,10 @@ alias psg='ps aux | rg'             # use `rg` after aliasing grep
 # ------------------------------------------------------------------
 # 4️⃣  fzf, fd, bat, eza – Default settings & keybindings
 # ------------------------------------------------------------------
+
+# Set up fzf key bindings and fuzzy completion
+source <(fzf --zsh)
+
 # Guard against missing tools – silently skip configuration if not found
 if command -v fd >/dev/null 2>&1; then
   # Default command that fzf runs when you hit Ctrl‑T
@@ -180,8 +184,6 @@ export FZF_DEFAULT_OPTS="
   '
 "
 
-# Source fzf keybindings if the script exists
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # ------------------------------------------------------------------
 # 7️⃣  Environment Variables & PATH
