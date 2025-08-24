@@ -141,11 +141,6 @@ unsetopt beep
 # ------------------------------------------------------------------
 # Pure is a fast, minimal prompt that shows git status, virtualenvs, etc.
 # If you do not have it installed, we fall back to the standard prompt.
-if prompt -p pure >/dev/null 2>&1; then
-  prompt pure
-else
-  autoload -Uz promptinit
-  promptinit
-  # prompt off
-  prompt default
-fi
+autoload -Uz promptinit
+promptinit
+prompt pure || prompt default
