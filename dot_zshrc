@@ -88,8 +88,6 @@ export LANG=en_US.UTF-8
 #   export EDITOR='nvim'
 # fi
 
-export EDITOR='nvim'
-
 # Compilation flags
 # export ARCHFLAGS="-arch $(uname -m)"
 
@@ -526,3 +524,30 @@ zle -N fco_info
 bindkey '^Xf' fzf_cd          # Ctrl‑X then f – fuzzy cd
 bindkey '^Xg' fzf_git         # Ctrl‑X then g – fuzzy git file
 bindkey '^Xc' gco_info        # Ctrl‑X then c – fuzzy checkout with preview
+
+
+# ------------------------------------------------------------------
+# 7️⃣  Environment Variables & PATH
+# ------------------------------------------------------------------
+export EDITOR="nvim"          # Default editor for functions
+export PAGER="less"           # Use less for paging
+export LESS="-R"              # Preserve ANSI colours in less
+export GPG_TTY=$(tty)         # Needed for gpg agent
+
+# Prepend local binaries (guard against duplicates)
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;          # already there
+  *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
+# Optional: start ssh‑agent if not already running
+if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+  eval "$(ssh-agent -c)"
+  export SSH_AUTH_SOCK
+fi
+
+# ------------------------------------------------------------------
+# 8️⃣  Miscellaneous – quick sanity checks
+# ------------------------------------------------------------------
+# Tell the user which tool we are using for grep
+# echo "grep → $(which grep)" | sed 's/^grep /# /'
