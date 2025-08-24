@@ -144,3 +144,19 @@ unsetopt beep
 autoload -Uz promptinit
 promptinit
 prompt pure || prompt default
+
+
+
+# ------------------------------------------------------------------
+# 3️⃣  Aliases – Modern replacements & safety aliases
+# ------------------------------------------------------------------
+# Keep the original grep handy (if you need classic behaviour)
+alias grep_orig='grep'              # classic grep
+alias grep='rg --smart-case'        # default to ripgrep
+alias cat='bat --paging=never --style=plain'  # colourized `cat`
+alias ls='eza --color=auto -F'     # modern ls (eza) with colour & classification
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Helper: grep for processes (uses ripgrep under the hood)
+alias psg='ps aux | rg'             # use `rg` after aliasing grep
