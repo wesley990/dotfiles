@@ -104,3 +104,6 @@ export EDITOR='nvim'
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+
+export FZF_DEFAULT_COMMAND="fd --type file --color=always --exclude .git"
+export FZF_DEFAULT_OPTS="--ansi"
