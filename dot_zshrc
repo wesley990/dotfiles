@@ -187,3 +187,59 @@ export FZF_DEFAULT_OPTS="
 
 # Source fzf keybindings if the script exists
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+
+
+# ------------------------------
+# git aliases
+# ------------------------------
+
+# Keep the default editor for Git
+export GIT_EDITOR=nvim
+
+# Quick‑fire helpers
+alias gst='git status'
+alias gco='git checkout'
+alias gcm='git commit'
+alias gaa='git add --all'
+alias gcp='git cherry-pick'
+alias gpr='git pull --rebase'
+alias gpb='git push -u origin HEAD'
+alias glog='git log --oneline --graph --decorate --all'
+alias gpl='git pull'
+alias gpup='git push'
+
+# One‑liner wrappers (as *functions* for flexibility)
+function gca() { git commit -a -m "$@"; }     # commit all & supply a message
+function gcl() { git clone --recursive "$@"; }
+function gsf() { git show -s --format=fuller "$@"; }
+function glr() { git rebase -i HEAD~"$1"; }   # e.g. glr 3 → rebase last 3 commits
+function gbf() { git branch -D "$@"; }
+function gss() { git status -s; }
+function gk()    { git checkout -; }
+function gup()   { git remote update && git status; }
+
+# Branch naming convention
+alias gb='git branch'
+alias gbd='git branch -d'
+alias gbdm='git branch -d --merged'
+
+# Convenience helpers
+alias gbr='git branch --remote --merged | grep -v "\\*"'  # note the escaped * for zsh
+alias gbl='git branch -a'
+alias gch='git checkout -b'
+alias gbu='git branch --set-upstream-to=origin/$(git rev-parse --abbrev-ref HEAD)'
+alias gbal='git fetch --all && git pull --prune'
+alias gpushf='git push --force-with-lease'
+alias gs='git stash push -m'
+alias gls='git ls-files'
+
+# Squash‑and‑push one‑liner
+alias gsq='git reset --soft HEAD~1 && git commit -m'
+
+# Re‑base onto main (or master)
+alias grb='git rebase main'
+
+# For more advanced behaviour (like “--force‑with‑lease” automatically using the current branch)
+function gpushf() { git push --force-with-lease "$@"; }
+
