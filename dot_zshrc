@@ -160,3 +160,30 @@ alias ...='cd ../..'
 
 # Helper: grep for processes (uses ripgrep under the hood)
 alias psg='ps aux | rg'             # use `rg` after aliasing grep
+
+
+
+# ------------------------------------------------------------------
+# 4️⃣  fzf, fd, bat, eza – Default settings & keybindings
+# ------------------------------------------------------------------
+# Guard against missing tools – silently skip configuration if not found
+if command -v fd >/dev/null 2>&1; then
+  # Default command that fzf runs when you hit Ctrl‑T
+  export FZF_DEFAULT_COMMAND="fd --type file --hidden --follow --exclude .git"
+fi
+
+# Preview is now unconditional: show bat output for files, short `eza` for dirs
+export FZF_DEFAULT_OPTS="
+  --height 50% --layout reverse --border
+  --preview-window 'up:40%:wrap'
+  --preview '
+    if [[ -d {} ]]; then
+      eza --long --git --ignore-glob=.git --no-user --no-time {} | head -40
+    else
+      bat --style=numbers --color=always {}
+    fi
+  '
+"
+
+# Source fzf keybindings if the script exists
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
