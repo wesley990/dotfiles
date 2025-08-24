@@ -150,7 +150,7 @@ alias grep_orig='grep'              # classic grep
 alias grep='rg --smart-case'        # default to ripgrep
 alias cat='bat --paging=never --style=plain'  # colourized `cat`
 #alias ls='eza --color=auto -F'     # modern ls (eza) with colour & classification
-alias ls='eza --color=auto'     # modern ls (eza) with colour & classification
+alias ls='eza --classify=auto --color=auto'     # modern ls (eza) with colour & classification
 alias ..='cd ..'
 alias ...='cd ../..'
 
