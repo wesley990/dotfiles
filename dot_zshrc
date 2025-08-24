@@ -263,15 +263,30 @@ alias gbal='git fetch --all --prune && git pull' # Fetch all, prune deleted bran
 function gcl() { git clone --recursive "$@"; } # Clone a repo, including its submodules
 
 # Usage: glr 3
-# Description: Interactively rebase the last 'n' commits.
-function glr() { git rebase -i HEAD~"$1"; }
+# Rebase the last `n` commits (default n=1)
+function glr() {
+  local n=${1:-1}
+  git rebase -i HEAD~"$n"
+}
 
 # Usage: grb
 #        grb develop
 # Description: Rebase the current branch onto the repo's default branch (main/master) or a specified branch.
 function grb() {
-  local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's|^refs/remotes/origin/||')
-  git rebase "${1:-$default_branch}"
+  local default_branch=${1:-}
+  if [[ -z $default_branch ]]; then
+    # Try origin/HEAD first
+    default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
+                     | sed 's|^refs/remotes/origin/||')
+    # Fallback to main or master
+    if [[ -z $default_branch ]]; then
+      default_branch=main
+      if ! git rev-parse --verify "$default_branch" >/dev/null 2>&1; then
+        default_branch=master
+      fi
+    fi
+  fi
+  git rebase "$default_branch"
 }
 
 # Usage: gsq
@@ -295,15 +310,19 @@ alias gwtp='git worktree prune' # Clean up stale worktree metadata
 # - If a path is specified, it uses that path.
 function gwtc() {
   if [[ -z "$1" ]]; then
-    echo "Usage: gwtc <branch-name> [path]"
+    echo "Usage: gwtc <branch> [path]" >&2
     return 1
   fi
   local branch="$1"
-  local path="${2:-../$branch}"
-  local repo_root=$(git rev-parse --show-toplevel)
-  if [[ "$path" != /* ]]; then
-    path="$repo_root/../$branch"
+  local path="${2:-$branch}"
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel)
+
+  # If the supplied path is relative, make it absolute relative to the repo root
+  if [[ "${path:0:1}" != "/" ]]; then
+    path="$repo_root/$path"
   fi
+
   echo "Creating worktree for branch '$branch' at '$path'..."
   git worktree add "$path" "$branch"
 }
@@ -315,14 +334,15 @@ function gwtc() {
 # - Otherwise, it removes the worktree specified by its branch name or path.
 function gwtr() {
   if [[ -z "$1" ]]; then
-    local current_worktree_path=$(git rev-parse --work-tree)
-    local main_worktree_path=$(git rev-parse --git-dir | sed 's/\.git.*//')
-    if [[ "$current_worktree_path" == "$main_worktree_path" ]]; then
-        echo "Error: This is the main worktree and cannot be removed."
-        return 1
+    local current=$(git rev-parse --show-toplevel)
+    local main=$(git rev-parse --show-toplevel --show-superproject-root 2>/dev/null)
+    # If we’re in the main repo or the main super‑project, refuse
+    if [[ "$current" == "$main" ]]; then
+      echo "Error: This is the main worktree and cannot be removed." >&2
+      return 1
     fi
-    echo "Removing current worktree at '$current_worktree_path'..."
-    git worktree remove "$current_worktree_path"
+    echo "Removing current worktree at '$current'..."
+    git worktree remove "$current"
   else
     echo "Removing worktree '$1'..."
     git worktree remove "$1"
@@ -388,31 +408,42 @@ _g_aliases=(
 # This allows you to type `g co my-branch` which it will execute as `gco my-branch`.
 # It also acts as a transparent wrapper, so `g diff` works just like `git diff`.
 function g() {
+  # No args → show status (quick overview)
   if [[ $# -eq 0 ]]; then
-    # Default action: if just 'g' is entered, run 'git status'.
-    git status
+    git status -s
     return
   fi
 
-  local subcommand="g$1"
-  # Check if a corresponding alias (like 'gco') exists.
-  if command -v "$subcommand" >/dev/null 2>&1; then
-    shift # Remove the first argument (e.g., 'co').
-    "$subcommand" "$@" # Execute the alias with the rest of the arguments.
+  local sub="${1}"          # e.g. "co" from `g co foo`
+  shift
+
+  local target="g$sub"
+
+  # Resolve the name that zsh will actually run:
+  # * If it’s an alias, use `eval` so the alias expands.
+  # * If it’s a function, just call it.
+  # * Otherwise forward everything to git directly.
+  local type
+  type=$(type -t "$target" 2>/dev/null)
+
+  if [[ $type == "function" ]]; then
+    "$target" "$@"
+  elif [[ $type == "alias" ]]; then
+    eval "$target" "$@"
   else
-    # If no alias matches, pass the command directly to git.
-    git "$@"
+    git "$sub" "$@"
   fi
 }
+ 
 
 # Step 3: Define the completion function for our 'g' command.
 # This function reads the _g_aliases array and formats it for Zsh's completion system.
-function _g_completions() {
-  local -a descriptions
+_g_completions() {
+  local -a words
   for key value in ${(kv)_g_aliases}; do
-    descriptions+=("$key:$value")
+    words+=("$key:$value")
   done
-  _describe 'g commands' descriptions
+  _describe 'g commands' words
 }
 
 # Step 4: Tie the completion function to the 'g' command.
