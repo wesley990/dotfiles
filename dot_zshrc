@@ -188,58 +188,236 @@ export FZF_DEFAULT_OPTS="
 # Source fzf keybindings if the script exists
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
+# ==============================================================================
+# § GIT POWER-USER CONFIGURATION FOR ZSH
+# ==============================================================================
+# This configuration provides a comprehensive set of aliases, functions, and
+# an interactive tab-completion system to streamline your Git workflow.
+#
+# Sections:
+# 1. Core Git Configuration
+# 2. Daily Workflow Aliases & Functions
+# 3. Git Worktree Management
+# 4. Dynamic Tab Completion Script
+#
+# ------------------------------------------------------------------------------
 
-
-# ------------------------------
-# git aliases
-# ------------------------------
-
-# Keep the default editor for Git
+# ------------------------------------------------------------------------------
+# § 1. CORE GIT CONFIGURATION
+# ------------------------------------------------------------------------------
+# Set the default editor for Git commit messages, rebasing, etc.
+# Using a powerful editor like Neovim or VS Code is highly recommended.
 export GIT_EDITOR=nvim
 
-# Quick‑fire helpers
+# ------------------------------------------------------------------------------
+# § 2. DAILY WORKFLOW ALIASES & FUNCTIONS
+# ------------------------------------------------------------------------------
+# These aliases and functions are organized by common Git tasks.
+
+# --- Status ---
+# Description: Check the state of your repository.
 alias gst='git status'
-alias gco='git checkout'
-alias gcm='git commit'
+function gss() { git status -s; } # Short, staged status (e.g., ' M file.txt')
+function gup() { git remote update && git status; } # Update remotes and then show status
+
+# --- Logging & History ---
+# Description: View project history.
+alias glog='git log --oneline --graph --decorate --all' # Your original concise log
+alias gloga="git log --graph --pretty=format:'%C(auto)%h -%d %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'" # A more detailed, colorful log
+function gsf() { git show -s --format=fuller "$@"; } # Show full author/commit info for a commit
+
+# --- Staging & Committing ---
+# Description: Add and save your changes.
 alias gaa='git add --all'
-alias gcp='git cherry-pick'
-alias gpr='git pull --rebase'
-alias gpb='git push -u origin HEAD'
-alias glog='git log --oneline --graph --decorate --all'
-alias gpl='git pull'
-alias gpup='git push'
+alias gcm='git commit -m' # Commit staged files with a message
+function gca() { git commit -a -m "$@"; } # Add all tracked files and commit
+alias gundo='git reset HEAD~1 --mixed' # Undo last commit, keeping changes in your working directory
 
-# One‑liner wrappers (as *functions* for flexibility)
-function gca() { git commit -a -m "$@"; }     # commit all & supply a message
-function gcl() { git clone --recursive "$@"; }
-function gsf() { git show -s --format=fuller "$@"; }
-function glr() { git rebase -i HEAD~"$1"; }   # e.g. glr 3 → rebase last 3 commits
-function gbf() { git branch -D "$@"; }
-function gss() { git status -s; }
-function gk()    { git checkout -; }
-function gup()   { git remote update && git status; }
-
-# Branch naming convention
+# --- Branching ---
+# Description: Manage your branches.
 alias gb='git branch'
-alias gbd='git branch -d'
-alias gbdm='git branch -d --merged'
+alias gbl='git branch -a' # List all local and remote branches
+alias gch='git checkout -b' # Create a new branch and switch to it
+alias gco='git checkout'
+function gk() { git checkout -; } # Switch back to the previously checked-out branch
+alias gbd='git branch -d' # Delete a merged local branch
+function gbf() { git branch -D "$@"; } # Force-delete a local branch
 
-# Convenience helpers
-alias gbr='git branch --remote --merged | grep -v "\\*"'  # note the escaped * for zsh
-alias gbl='git branch -a'
-alias gch='git checkout -b'
-alias gbu='git branch --set-upstream-to=origin/$(git rev-parse --abbrev-ref HEAD)'
-alias gbal='git fetch --all && git pull --prune'
-alias gpushf='git push --force-with-lease'
-alias gs='git stash push -m'
-alias gls='git ls-files'
+# --- Stashing ---
+# Description: Temporarily save uncommitted changes.
+function gs() { git stash push -m "$@"; } # Stash changes with a descriptive message
+alias gsp='git stash pop' # Apply the most recent stash and remove it from the stash list
+alias gsl='git stash list' # List all stashes
 
-# Squash‑and‑push one‑liner
-alias gsq='git reset --soft HEAD~1 && git commit -m'
+# --- Remotes & Syncing ---
+# Description: Interact with remote repositories.
+alias gpl='git pull'
+alias gpr='git pull --rebase' # Pull and rebase to avoid merge commits
+alias gp='git push'
+alias gpb='git push -u origin HEAD' # Push current branch and set it to track the remote branch
+alias gpushf='git push --force-with-lease' # Safer force-push; won't overwrite upstream changes
+alias gbal='git fetch --all --prune && git pull' # Fetch all, prune deleted branches, and pull
 
-# Re‑base onto main (or master)
-alias grb='git rebase main'
+# --- Advanced Functions ---
+# Description: Powerful one-liners for complex tasks.
+function gcl() { git clone --recursive "$@"; } # Clone a repo, including its submodules
 
-# For more advanced behaviour (like “--force‑with‑lease” automatically using the current branch)
-function gpushf() { git push --force-with-lease "$@"; }
+# Usage: glr 3
+# Description: Interactively rebase the last 'n' commits.
+function glr() { git rebase -i HEAD~"$1"; }
 
+# Usage: grb
+#        grb develop
+# Description: Rebase the current branch onto the repo's default branch (main/master) or a specified branch.
+function grb() {
+  local default_branch=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's|^refs/remotes/origin/||')
+  git rebase "${1:-$default_branch}"
+}
+
+# Usage: gsq
+# Description: Squashes the last commit into the one before it without changing the commit message.
+# Perfect for cleaning up "fixup" commits before pushing.
+alias gsq='git reset --soft HEAD~1 && git commit --amend --no-edit'
+
+# ------------------------------------------------------------------------------
+# § 3. GIT WORKTREE MANAGEMENT
+# ------------------------------------------------------------------------------
+# Description: Commands for managing multiple working trees attached to a single repository.
+# This allows you to work on different branches simultaneously without stashing.
+
+alias gwtl='git worktree list' # List all worktrees for this repository
+alias gwtp='git worktree prune' # Clean up stale worktree metadata
+
+# Usage: gwtc <branch-name> [path]
+# Description: Creates a new worktree.
+# - If only a branch is given, it creates a directory named after the branch
+#   in the parent folder (e.g., ../<branch-name>).
+# - If a path is specified, it uses that path.
+function gwtc() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: gwtc <branch-name> [path]"
+    return 1
+  fi
+  local branch="$1"
+  local path="${2:-../$branch}"
+  local repo_root=$(git rev-parse --show-toplevel)
+  if [[ "$path" != /* ]]; then
+    path="$repo_root/../$branch"
+  fi
+  echo "Creating worktree for branch '$branch' at '$path'..."
+  git worktree add "$path" "$branch"
+}
+
+# Usage: gwtr
+#        gwtr <branch-or-path>
+# Description: Removes a worktree.
+# - If run with no arguments from within a worktree, it removes itself.
+# - Otherwise, it removes the worktree specified by its branch name or path.
+function gwtr() {
+  if [[ -z "$1" ]]; then
+    local current_worktree_path=$(git rev-parse --work-tree)
+    local main_worktree_path=$(git rev-parse --git-dir | sed 's/\.git.*//')
+    if [[ "$current_worktree_path" == "$main_worktree_path" ]]; then
+        echo "Error: This is the main worktree and cannot be removed."
+        return 1
+    fi
+    echo "Removing current worktree at '$current_worktree_path'..."
+    git worktree remove "$current_worktree_path"
+  else
+    echo "Removing worktree '$1'..."
+    git worktree remove "$1"
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# § 4. DYNAMIC TAB COMPLETION SCRIPT
+# ------------------------------------------------------------------------------
+# This script creates a 'g' command that acts as a dispatcher for all other
+# git aliases and provides a helpful, descriptive tab-completion menu.
+
+# Step 1: Define the descriptions for all your 'g' aliases.
+# This is the single source of truth for the completion menu.
+# The key is the part of the alias *after* 'g' (e.g., for 'gco', the key is 'co').
+typeset -A _g_aliases
+_g_aliases=(
+  # Status
+  st    "status"
+  ss    "status -s (short, staged status)"
+  up    "remote update && git status"
+  # Logging
+  log   "log --oneline --graph --decorate --all"
+  loga  "log (detailed, colorful graph)"
+  sf    "show -s --format=fuller (full commit info)"
+  # Committing
+  aa    "add --all"
+  cm    "commit -m (commit staged files)"
+  ca    "commit -a -m (add all tracked and commit)"
+  undo  "reset HEAD~1 --mixed (undo last commit)"
+  # Branching
+  b     "branch"
+  bl    "branch -a (all local and remote)"
+  ch    "checkout -b (create and switch branch)"
+  co    "checkout"
+  k     "checkout - (previous branch)"
+  bd    "branch -d (delete merged branch)"
+  bf    "branch -D (force delete branch)"
+  # Stashing
+  s     "stash push -m (stash with a message)"
+  sp    "stash pop"
+  sl    "stash list"
+  # Syncing
+  pl    "pull"
+  pr    "pull --rebase"
+  p     "push"
+  pb    "push -u origin HEAD (set upstream)"
+  pushf "push --force-with-lease (safer force push)"
+  bal   "fetch --all --prune && git pull"
+  # Advanced
+  cl    "clone --recursive"
+  lr    "rebase -i HEAD~<n> (interactive rebase)"
+  rb    "rebase <default-branch> (rebase onto main/master)"
+  sq    "reset --soft HEAD~1 && commit --amend"
+  # Worktree
+  wtl   "worktree list"
+  wtc   "worktree create <branch> [path]"
+  wtr   "worktree remove [path]"
+  wtp   "worktree prune"
+)
+
+# Step 2: Create the 'g' dispatcher function.
+# This allows you to type `g co my-branch` which it will execute as `gco my-branch`.
+# It also acts as a transparent wrapper, so `g diff` works just like `git diff`.
+function g() {
+  if [[ $# -eq 0 ]]; then
+    # Default action: if just 'g' is entered, run 'git status'.
+    git status
+    return
+  fi
+
+  local subcommand="g$1"
+  # Check if a corresponding alias (like 'gco') exists.
+  if command -v "$subcommand" >/dev/null 2>&1; then
+    shift # Remove the first argument (e.g., 'co').
+    "$subcommand" "$@" # Execute the alias with the rest of the arguments.
+  else
+    # If no alias matches, pass the command directly to git.
+    git "$@"
+  fi
+}
+
+# Step 3: Define the completion function for our 'g' command.
+# This function reads the _g_aliases array and formats it for Zsh's completion system.
+function _g_completions() {
+  local -a descriptions
+  for key value in ${(kv)_g_aliases}; do
+    descriptions+=("$key:$value")
+  done
+  _describe 'g commands' descriptions
+}
+
+# Step 4: Tie the completion function to the 'g' command.
+compdef _g_completions g
+
+# ==============================================================================
+# § END OF GIT CONFIGURATION
+# ==============================================================================
