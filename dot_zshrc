@@ -238,7 +238,7 @@ alias gundo='git reset HEAD~1 --mixed' # Undo last commit, keeping changes in yo
 alias gb='git branch'
 alias gbl='git branch -a' # List all local and remote branches
 alias gch='git checkout -b' # Create a new branch and switch to it
-alias gco='git checkout'
+#alias gco='git checkout'
 function gk() { git checkout -; } # Switch back to the previously checked-out branch
 alias gbd='git branch -d' # Delete a merged local branch
 function gbf() { git branch -D "$@"; } # Force-delete a local branch
@@ -452,3 +452,64 @@ compdef _g_completions g
 # ==============================================================================
 # § END OF GIT CONFIGURATION
 # ==============================================================================
+
+# ------------------------------------------------------------------
+# 5️⃣  Custom Functions – Interactive helpers
+# ------------------------------------------------------------------
+# 5a) fzf_rg – search text, pick a match, open in editor
+function fzf_rg() {
+  local line
+  line=$(rg --color=always --line-number --no-heading "$@" |
+         fzf --ansi \
+             --delimiter : \
+             --with-nth=1,2,3.. \
+             --nth 3.. \
+             --preview 'bat --style=numbers --color=always --highlight-line {2} {1}' \
+             --preview-window 'up,60%,border-bottom,+{2}+3/3,~3')
+  if [[ -n "$line" ]]; then
+    local file=$(cut -d: -f1 <<< "$line")
+    local line_num=$(cut -d: -f2 <<< "$line")
+    ${EDITOR:-nvim} "$file" "+$line_num"
+  fi
+}
+
+# 5b) fzf_cd – fuzzy change‑to‑directory
+function fzf_cd() {
+  local dir
+  dir=$(fd --type d --hidden --exclude .git | fzf --preview 'eza --long --git {} | head -20')
+  [[ -n "$dir" ]] && cd "$dir"
+}
+
+# 5c) fkill – interactive process killer (default SIGTERM)
+function fkill() {
+  local ps_cmd="ps -ef"
+  [[ "$OSTYPE" == "darwin"* ]] && ps_cmd="ps aux"
+  local pid
+  pid=$($ps_cmd | sed 1d | fzf -m | awk '{print $2}')
+  [[ -n "$pid" ]] && echo "$pid" | xargs kill -"${1:-15}"   # default to SIGTERM
+}
+
+# 5d) gco – fuzzy checkout of local or remote branch
+function gco() {
+  local branches branch
+  branches=$(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes | \
+             sed '/\/HEAD$/d' | sort -u)
+  branch=$(echo "$branches" | fzf --height 30% --reverse)
+  [[ -n "$branch" ]] && git checkout "$branch"
+}
+
+# 5e) gco_info – fuzzy checkout with last‑commit preview
+function gco_info() {
+  local branch
+  branch=$(git branch -a | sed -e 's/^[* ] //g' | \
+           fzf --preview 'git log -1 --oneline {}')
+  [[ -n "$branch" ]] && git checkout "$branch"
+}
+
+# 5f) fzf_git – open a tracked file in your editor
+function fzf_git() {
+  local file
+  file=$(git ls-files | fzf --preview 'bat --style=numbers --color=always {}')
+  [[ -n "$file" ]] && ${EDITOR:-nvim} "$file"
+}
+
