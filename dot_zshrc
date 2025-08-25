@@ -153,7 +153,6 @@ prompt pure || prompt default
 # 3️⃣  Aliases – Modern replacements & safety aliases
 # ------------------------------------------------------------------
 # Keep the original grep handy (if you need classic behaviour)
-eval "$(zoxide init zsh)"
 alias grep_orig='grep'              # classic grep
 alias grep='rg --smart-case'        # default to ripgrep
 alias cat='bat --paging=never --style=plain'  # colourized `cat`
