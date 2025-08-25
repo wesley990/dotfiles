@@ -146,7 +146,7 @@ unsetopt beep
 # Pure is a fast, minimal prompt that shows git status, virtualenvs, etc.
 # If you do not have it installed, we fall back to the standard prompt.
 fpath+=($HOME/.zsh/pure)
-autoload -Uz promptinit
+autoload -Uz promptinit; promptinit
 prompt pure || prompt default
 
 # ------------------------------------------------------------------
