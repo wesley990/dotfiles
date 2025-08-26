@@ -164,6 +164,13 @@ alias ...='cd ../..'
 alias psg='ps aux | rg'             # use `rg` after aliasing grep
 
 # ------------------------------------------------------------------
+# Alias `fd` to `fdfind` if the real `fd` command is missing
+# ------------------------------------------------------------------
+if ! command -v fd >/dev/null 2>&1; then
+    alias fd=fdfind
+fi
+
+# ------------------------------------------------------------------
 # 4️⃣  fzf, fd, bat, eza – Default settings & keybindings
 # ------------------------------------------------------------------
 
