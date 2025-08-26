@@ -159,6 +159,7 @@ alias cat='bat --paging=never --style=plain'  # colourized `cat`
 alias ls='eza --classify=auto --color=auto'     # modern ls (eza) with colour & classification
 alias ..='cd ..'
 alias ...='cd ../..'
+alias v='nvim'
 
 # Helper: grep for processes (uses ripgrep under the hood)
 alias psg='ps aux | rg'             # use `rg` after aliasing grep
