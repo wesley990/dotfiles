@@ -205,3 +205,5 @@ if ! pgrep -u "$USER" ssh-agent > /dev/null; then
   export SSH_AUTH_SOCK
 fi
 
+# The line is added after uv installed
+. "$HOME/.local/bin/env"
