@@ -150,6 +150,13 @@ autoload -Uz promptinit; promptinit
 prompt pure || prompt default
 
 # ------------------------------------------------------------------
+# Alias `bat` to `batcat` if the real `bat` command is missing
+# ------------------------------------------------------------------
+if ! command -v batcat >/dev/null 2>&1; then
+    alias bat=batcat
+fi
+
+# ------------------------------------------------------------------
 # 3️⃣  Aliases – Modern replacements & safety aliases
 # ------------------------------------------------------------------
 # Keep the original grep handy (if you need classic behaviour)
@@ -169,13 +176,6 @@ alias psg='ps aux | rg'             # use `rg` after aliasing grep
 # ------------------------------------------------------------------
 if ! command -v fd >/dev/null 2>&1; then
     alias fd=fdfind
-fi
-
-# ------------------------------------------------------------------
-# Alias `bat` to `batcat` if the real `bat` command is missing
-# ------------------------------------------------------------------
-if ! command -v batcat >/dev/null 2>&1; then
-    alias bat=batcat
 fi
 
 # ------------------------------------------------------------------
