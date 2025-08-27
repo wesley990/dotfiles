@@ -223,6 +223,7 @@ function ksu() {
         sudo apt clean
         npm install -g npm@latest
         npm update -g
+        sudo snap refresh
     else
         echo "No supported package manager (dnf/apt) found."
         return 1
