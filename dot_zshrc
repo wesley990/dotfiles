@@ -207,7 +207,30 @@ export FZF_DEFAULT_OPTS="
     fi
   '
 "
+# Define a function that checks which package manager exists and runs the right commands
+function ksu() {
+    if command -v dnf >/dev/null 2>&1; then
+        echo "Using dnf..."
+        sudo dnf update -y
+        sudo dnf upgrade -y
+        sudo dnf clean all
+        npm install -g npm@latest
+        npm update -g
+    elif command -v apt >/dev/null 2>&1; then
+        echo "Using apt..."
+        sudo apt update
+        sudo apt upgrade -y
+        sudo apt clean
+        npm install -g npm@latest
+        npm update -g
+    else
+        echo "No supported package manager (dnf/apt) found."
+        return 1
+    fi
+}
 
+# Alias to a convenient name
+alias ksu='ksu'
 
 # ------------------------------------------------------------------
 # 7️⃣  Environment Variables & PATH
