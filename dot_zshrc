@@ -210,7 +210,7 @@ export FZF_DEFAULT_OPTS="
   '
 "
 # Define a function that checks which package manager exists and runs the right commands
-function ksu() {
+ksu() {
     if command -v dnf >/dev/null 2>&1; then
         echo "Using dnf..."
         sudo dnf update -y
