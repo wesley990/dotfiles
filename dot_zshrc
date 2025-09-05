@@ -213,18 +213,14 @@ export FZF_DEFAULT_OPTS="
 ksu() {
     if command -v dnf >/dev/null 2>&1; then
         echo "Using dnf..."
-        sudo dnf update -y
-        sudo dnf upgrade -y
-        sudo dnf clean all
-        npm install -g npm@latest
-        npm update -g
+        sudo dnf update -y; sudo dnf upgrade -y; sudo dnf clean all
+        npm install npm@latest -g; npm ls -g; npm up -g; npm ls -g
+        uv self update; uv tool upgrade --all; uv python upgrade; uv cache clean; uv cache prune
     elif command -v apt >/dev/null 2>&1; then
         echo "Using apt..."
-        sudo apt update
-        sudo apt upgrade -y
-        sudo apt clean
-        npm install -g npm@latest
-        npm update -g
+        sudo apt update; sudo apt upgrade -y; sudo apt clean
+        npm install npm@latest -g; npm ls -g; npm up -g; npm ls -g
+        uv self update; uv tool upgrade --all; uv python upgrade; uv cache clean; uv cache prune
         sudo snap refresh
     else
         echo "No supported package manager (dnf/apt) found."
