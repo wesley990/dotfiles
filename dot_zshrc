@@ -108,7 +108,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 #export ZELLIJ_AUTO_ATTACH=true
-export ZELLIJ_AUTO_EXIT=true
+#export ZELLIJ_AUTO_EXIT=true
 
 # List current sessions, attach to a running session, or create a new one. Depends on sk & bash
 ZJ_SESSIONS=$(zellij list-sessions)
