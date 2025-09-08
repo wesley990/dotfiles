@@ -107,19 +107,8 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-#export ZELLIJ_AUTO_ATTACH=true
-#export ZELLIJ_AUTO_EXIT=true
-
-# List current sessions, attach to a running session, or create a new one. Depends on sk & bash
-ZJ_SESSIONS=$(zellij list-sessions)
-NO_SESSIONS=$(echo "${ZJ_SESSIONS}" | wc -l)
-if [ "${NO_SESSIONS}" -ge 2 ]; then
-    zellij attach \
-    "$(echo "${ZJ_SESSIONS}" | sk)"
-else
-   zellij attach -c
-fi
-
+export ZELLIJ_AUTO_ATTACH=true
+# export ZELLIJ_AUTO_EXIT=true
 # eval "$(zellij setup --generate-auto-start zsh)"
 
 eval "$(zoxide init zsh)"
