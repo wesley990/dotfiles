@@ -7,7 +7,7 @@ MODEL=$(echo "$input" | jq -r '.model.display_name // "?"')
 PROJECT_DIR=$(echo "$input" | jq -r '.workspace.project_dir // .workspace.current_dir // "."')
 CUR=$(basename "$PROJECT_DIR")
 BRANCH=""
-if git -C "$PROJECT_DIR" rev-parse --git-dir > /dev/null 2>&1; then
+if git -C "$PROJECT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
   BRANCH_NAME=$(git -C "$PROJECT_DIR" branch --show-current 2>/dev/null)
   if [ -n "$BRANCH_NAME" ]; then
     BRANCH="🌿${BRANCH_NAME}"
@@ -18,10 +18,10 @@ fi
 COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 DUR_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
-total_seconds=$(( DUR_MS / 1000 ))
-s=$(( total_seconds % 60 ))
-m=$(( (total_seconds / 60) % 60 ))
-h=$(( total_seconds / 3600 ))
+total_seconds=$((DUR_MS / 1000))
+s=$((total_seconds % 60))
+m=$(((total_seconds / 60) % 60))
+h=$((total_seconds / 3600))
 
 # 格式化成 HH:MM:SS
 DUR_FMT=$(printf "%02d:%02d:%02d" "$h" "$m" "$s")
@@ -34,13 +34,17 @@ if [ -n "$TOK_IN" ] && [ -n "$TOK_OUT" ]; then
   TOK_TOTAL=$((TOK_IN + TOK_OUT))
 fi
 
+# 系統時間（顯示年-月-日 HH:MM:SS）
+SYS_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+
 # 暗色背景顏色 ANSI codes
-FG_MODEL="\033[38;5;81m"   # 淡青
-FG_PROJECT="\033[38;5;75m" # 青綠偏藍
-FG_BRANCH="\033[38;5;142m" # 橙黃色
-FG_COST="\033[38;5;208m"   # 橙色
-FG_TOKEN="\033[38;5;141m"  # 粉紫色
-FG_TIME="\033[38;5;33m"    # 深藍 / 青藍亮色
+FG_MODEL="\033[38;5;81m"    # 淡青
+FG_PROJECT="\033[38;5;75m"  # 青綠偏藍
+FG_BRANCH="\033[38;5;142m"  # 橙黃色
+FG_COST="\033[38;5;208m"    # 橙色
+FG_TOKEN="\033[38;5;141m"   # 粉紫色
+FG_TIME="\033[38;5;33m"     # 深藍 / 青藍亮色
+FG_SYSDATE="\033[38;5;246m" # 較淡的灰白色，用來顯示系統時間
 RESET="\033[0m"
 
 # 組 status line 一行出的格式
@@ -56,3 +60,4 @@ if [ -n "$TOK_TOTAL" ]; then
   printf " | ${FG_TOKEN}🔢 %d tot${RESET}" "$TOK_TOTAL"
 fi
 printf " | ${FG_TIME}⏱ %s${RESET}" "$DUR_FMT"
+printf " | ${FG_SYSDATE}📅 %s${RESET}" "$SYS_TIME"
