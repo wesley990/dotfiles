@@ -1,7 +1,7 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/statusline.sh",
+    "command": "bash ~/.claude/statusline-full.sh",
     "padding": 0
   }
 }
