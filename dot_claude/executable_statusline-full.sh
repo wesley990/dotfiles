@@ -15,7 +15,43 @@ if git -C "$PROJECT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
 fi
 
 # cost & 時間（ms → HH:MM:SS）
-COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+COST_USD=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+
+CACHE_FILE="/tmp/usd_twd_rate.json"
+CACHE_TTL=$((60*60)) # 1 小時
+
+fetch_rate() {
+  curl -s https://open.er-api.com/v6/latest/USD \
+    | jq -r '.time_last_update_unix, .rates.TWD' 2>/dev/null \
+    | awk 'NR==1{ts=$1} NR==2{rate=$1} END{if(rate!="null" && rate!="") print ts, rate}'
+}
+
+# 如果有 cache 且沒過期，直接用
+if [[ -f "$CACHE_FILE" ]]; then
+  read CACHE_TS CACHE_RATE < "$CACHE_FILE"
+  NOW=$(date +%s)
+  if (( NOW - CACHE_TS < CACHE_TTL )); then
+    RATE_TWD=$CACHE_RATE
+  fi
+fi
+
+# 若沒有 cache 或 cache 過期 → 抓新的
+if [[ -z "$RATE_TWD" ]]; then
+  if DATA=$(fetch_rate); then
+    RATE_TWD=$(echo "$DATA" | awk '{print $2}')
+    TS=$(echo "$DATA" | awk '{print $1}')
+    echo "$TS $RATE_TWD" > "$CACHE_FILE"
+  fi
+fi
+
+# 顯示結果
+if [[ "$RATE_TWD" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  COST_TWD=$(awk "BEGIN { printf \"%.2f\", $COST_USD * $RATE_TWD }")
+  COST_DISPLAY="NT$${COST_TWD} (~\$${COST_USD})"
+else
+  COST_DISPLAY="\$${COST_USD}"  # fallback
+fi
+
 DUR_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
 
 total_seconds=$((DUR_MS / 1000))
@@ -55,7 +91,7 @@ printf " | ${FG_PROJECT}📦 %s${RESET}" "$CUR"
 if [ -n "$BRANCH" ]; then
   printf "${FG_BRANCH}/%s${RESET}" "$BRANCH"
 fi
-printf " | ${FG_COST}💰 $%.4f${RESET}" "$COST"
+printf " | ${FG_COST}💰 %s${RESET}" "$COST_DISPLAY"
 if [ -n "$TOK_TOTAL" ]; then
   printf " | ${FG_TOKEN}🔢 %d tot${RESET}" "$TOK_TOTAL"
 fi
