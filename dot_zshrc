@@ -236,7 +236,7 @@ alias ksu='ksu'
 # ------------------------------------------------------------------
 # 7️⃣  Environment Variables & PATH
 # ------------------------------------------------------------------
-export EDITOR="nvim"          # Default editor for functions
+# export EDITOR="nvim"          # Default editor for functions
 export PAGER="less"           # Use less for paging
 export LESS="-R"              # Preserve ANSI colours in less
 export GPG_TTY=$(tty)         # Needed for gpg agent
