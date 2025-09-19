@@ -28,7 +28,7 @@ fetch_rate() {
 
 # 如果有 cache 且沒過期，直接用
 if [[ -f "$CACHE_FILE" ]]; then
-  read CACHE_TS CACHE_RATE <"$CACHE_FILE"
+  read -r CACHE_TS CACHE_RATE <"$CACHE_FILE"
   NOW=$(date +%s)
   if ((NOW - CACHE_TS < CACHE_TTL)); then
     RATE_TWD=$CACHE_RATE
