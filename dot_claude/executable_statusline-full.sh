@@ -18,19 +18,19 @@ fi
 COST_USD=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
 
 CACHE_FILE="/tmp/usd_twd_rate.json"
-CACHE_TTL=$((60*60)) # 1 小時
+CACHE_TTL=$((60 * 60)) # 1 小時
 
 fetch_rate() {
-  curl -s https://open.er-api.com/v6/latest/USD \
-    | jq -r '.time_last_update_unix, .rates.TWD' 2>/dev/null \
-    | awk 'NR==1{ts=$1} NR==2{rate=$1} END{if(rate!="null" && rate!="") print ts, rate}'
+  curl -s https://open.er-api.com/v6/latest/USD |
+    jq -r '.time_last_update_unix, .rates.TWD' 2>/dev/null |
+    awk 'NR==1{ts=$1} NR==2{rate=$1} END{if(rate!="null" && rate!="") print ts, rate}'
 }
 
 # 如果有 cache 且沒過期，直接用
 if [[ -f "$CACHE_FILE" ]]; then
-  read CACHE_TS CACHE_RATE < "$CACHE_FILE"
+  read CACHE_TS CACHE_RATE <"$CACHE_FILE"
   NOW=$(date +%s)
-  if (( NOW - CACHE_TS < CACHE_TTL )); then
+  if ((NOW - CACHE_TS < CACHE_TTL)); then
     RATE_TWD=$CACHE_RATE
   fi
 fi
@@ -40,16 +40,17 @@ if [[ -z "$RATE_TWD" ]]; then
   if DATA=$(fetch_rate); then
     RATE_TWD=$(echo "$DATA" | awk '{print $2}')
     TS=$(echo "$DATA" | awk '{print $1}')
-    echo "$TS $RATE_TWD" > "$CACHE_FILE"
+    echo "$TS $RATE_TWD" >"$CACHE_FILE"
   fi
 fi
 
 # 顯示結果
 if [[ "$RATE_TWD" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
   COST_TWD=$(awk "BEGIN { printf \"%.2f\", $COST_USD * $RATE_TWD }")
-  COST_DISPLAY="NT$${COST_TWD} (~\$${COST_USD})"
+  COST_USD_FMT=$(awk "BEGIN { printf \"%.2f\", $COST_USD }")
+  COST_DISPLAY="NT$COST_TWD (~\$$COST_USD_FMT)"
 else
-  COST_DISPLAY="\$${COST_USD}"  # fallback
+  COST_DISPLAY="$(awk "BEGIN { printf \"%.2f\", $COST_USD }") USD" # fallback
 fi
 
 DUR_MS=$(echo "$input" | jq -r '.cost.total_duration_ms // 0')
