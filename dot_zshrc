@@ -165,12 +165,6 @@ setup_pure_prompt() {
   fi
 }
 
-# Zsh autosuggestion tweaks for smoother UX.
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-ZSH_AUTOSUGGEST_USE_ASYNC=1
-ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'   # subtle grey
-
 source $ZSH/oh-my-zsh.sh
 
 setup_pure_prompt
