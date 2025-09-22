@@ -180,16 +180,47 @@ fi
 
 # Lazy loading for NVM to improve startup performance
 export NVM_DIR="$HOME/.nvm"
+__nvm_lazy_load() {
+  # Avoid re-sourcing once nvm is loaded successfully
+  case "${__nvm_lazy_loaded-}" in
+    1) return 0 ;;
+    missing) return 1 ;;
+  esac
+
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    unset -f nvm 2>/dev/null || true
+    unset -f nvm_find_nvmrc 2>/dev/null || true
+    \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+    __nvm_lazy_loaded=1
+    return 0
+  fi
+
+  if [ -z "${__nvm_lazy_warned-}" ]; then
+    echo "nvm_lazy_load: missing $NVM_DIR/nvm.sh" >&2
+    __nvm_lazy_warned=1
+  fi
+  __nvm_lazy_loaded=missing
+  return 1
+}
+
 nvm() {
-  unset -f nvm
-  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+  __nvm_lazy_load || return $?
   nvm "$@"
+}
+
+nvm_find_nvmrc() {
+  __nvm_lazy_load || return $?
+  nvm_find_nvmrc "$@"
 }
 
 # Auto-load nvm on cd if .nvmrc exists
 autoload -U add-zsh-hook
 load-nvmrc() {
+  if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    return
+  fi
+
   local nvmrc_path="$(nvm_find_nvmrc)"
   if [ -n "$nvmrc_path" ]; then
     local nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
