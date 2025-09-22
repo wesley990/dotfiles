@@ -114,6 +114,57 @@ plugins=(git zoxide fzf-tab fast-syntax-highlighting zsh-autosuggestions zsh-his
 # Check plugin dependencies
 check_plugin_deps
 
+# Configure the Pure prompt when installed via Homebrew, dnf, or apt.
+setup_pure_prompt() {
+  local pure_dirs=()
+  local pure_found=false
+
+  if [[ -d "$HOME/.zsh/pure" ]]; then
+    pure_dirs+=("$HOME/.zsh/pure")
+  fi
+
+  if command_exists brew; then
+    local brew_prefix
+    if brew_prefix="$(brew --prefix 2>/dev/null)"; then
+      pure_dirs+=("$brew_prefix/share/zsh/site-functions")
+    fi
+  fi
+
+  if command_exists dnf; then
+    pure_dirs+=("/usr/share/zsh/site-functions")
+  fi
+
+  if command_exists apt; then
+    pure_dirs+=("/usr/share/zsh/vendor-functions" "/usr/share/zsh/site-functions")
+  fi
+
+  local dir
+  for dir in "${pure_dirs[@]}"; do
+    if [[ -d "$dir" ]]; then
+      if (( ! ${fpath[(Ie)$dir]} )); then
+        fpath+=("$dir")
+      fi
+      if [[ -f "$dir/prompt_pure_setup" ]]; then
+        pure_found=true
+      fi
+    fi
+  done
+
+  autoload -U promptinit && promptinit
+
+  if prompt pure >/dev/null 2>&1; then
+    return
+  fi
+
+  prompt default >/dev/null 2>&1 || true
+
+  if [[ "$pure_found" != true ]]; then
+    echo "Warning: Pure prompt not available. Install with brew install pure, sudo dnf install zsh-pure-prompt, or sudo apt install zsh-pure-prompt." >&2
+  else
+    echo "Warning: Failed to load Pure prompt; falling back to default prompt." >&2
+  fi
+}
+
 # Zsh autosuggestion tweaks for smoother UX.
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 ZSH_AUTOSUGGEST_USE_ASYNC=1
@@ -121,6 +172,8 @@ ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'   # subtle grey
 
 source $ZSH/oh-my-zsh.sh
+
+setup_pure_prompt
 
 # --------------------------------------------------
 # History substring search (↑ / ↓)
@@ -307,31 +360,6 @@ SAVEHIST=50000
 
 unsetopt beep
 
-# ------------------------------------------------------------------
-# 2️⃣  Prompt – Pure (fallback to default if missing)
-# ------------------------------------------------------------------
-# Pure is a fast, minimal prompt that shows git status, virtualenvs, etc.
-# If you do not have it installed, we fall back to the standard prompt.
-autoload -Uz promptinit && promptinit
-pure_candidate_paths=()
-if [[ -d "$HOME/.zsh/pure" ]]; then
-  pure_candidate_paths+=("$HOME/.zsh/pure")
-fi
-if command_exists brew; then
-  if brew_prefix="$(brew --prefix 2>/dev/null)"; then
-    brew_pure_dir="$brew_prefix/share/zsh/site-functions"
-    if [[ -d "$brew_pure_dir" ]] && [[ -f "$brew_pure_dir/prompt_pure_setup" ]]; then
-      pure_candidate_paths+=("$brew_pure_dir")
-    fi
-  fi
-fi
-
-if (( ${#pure_candidate_paths[@]} )); then
-  fpath+=("${pure_candidate_paths[@]}")
-  prompt pure || prompt default
-else
-  prompt default
-fi
 
 # ------------------------------------------------------------------
 # Enhanced Completion Configuration
