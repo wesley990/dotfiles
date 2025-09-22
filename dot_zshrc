@@ -70,6 +70,10 @@ HIST_STAMPS="yyyy-mm-dd"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
+
+# Handy helper to cut down on repetitive command -v checks.
+command_exists() { command -v "$1" >/dev/null 2>&1; }
+
 # Plugin dependency checking and loading
 check_plugin_deps() {
   local missing_plugins=()
@@ -201,9 +205,6 @@ load-nvmrc() {
 }
 add-zsh-hook chpwd load-nvmrc
 
-# Handy helper to cut down on repetitive command -v checks.
-command_exists() { command -v "$1" >/dev/null 2>&1; }
-
 # XDG Base Directory Specification support
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -306,13 +307,13 @@ fi
 # ------------------------------------------------------------------
 # Use modern completion system
 autoload -Uz compinit
+[[ -d "${XDG_CACHE_HOME}/zsh" ]] || mkdir -p "${XDG_CACHE_HOME}/zsh"
 # Check if we need to regenerate completion cache (once per day)
 if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
   compinit -d "${XDG_CACHE_HOME}/zsh/zcompdump-${ZSH_VERSION}"
 else
   compinit -C -d "${XDG_CACHE_HOME}/zsh/zcompdump-${ZSH_VERSION}"
 fi
-[[ -d "${XDG_CACHE_HOME}/zsh" ]] || mkdir -p "${XDG_CACHE_HOME}/zsh"
 
 # Enhanced completion styling
 zstyle ':completion:*' menu select
