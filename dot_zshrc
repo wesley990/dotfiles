@@ -1,5 +1,5 @@
 # If you come from bash you might have to change your $PATH.
-export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
+# PATH is configured below using modern zsh array syntax
 
 # Path to your Oh My Zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
@@ -70,9 +70,66 @@ HIST_STAMPS="yyyy-mm-dd"
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git zoxide fzf-tab zsh-autosuggestions fast-syntax-highlighting zsh-syntax-highlighting)
+# Plugin dependency checking and loading
+check_plugin_deps() {
+  local missing_plugins=()
+
+  # Check for optional dependencies
+  if ! command_exists git; then
+    echo "Warning: git plugin loaded but git command not found" >&2
+  fi
+
+  if ! command_exists zoxide; then
+    echo "Warning: zoxide plugin loaded but zoxide command not found" >&2
+    echo "Install with: curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash" >&2
+  fi
+
+  if ! command_exists fzf; then
+    echo "Warning: fzf-tab plugin loaded but fzf command not found" >&2
+    echo "Install fzf for optimal experience" >&2
+  fi
+
+  # Check for plugin files in Oh My Zsh
+  local plugin_dir="${ZSH}/plugins"
+  local custom_plugin_dir="${ZSH_CUSTOM:-$ZSH/custom}/plugins"
+
+  for plugin in fast-syntax-highlighting zsh-autosuggestions zsh-history-substring-search; do
+    if [[ ! -d "$plugin_dir/$plugin" && ! -d "$custom_plugin_dir/$plugin" ]]; then
+      missing_plugins+=("$plugin")
+    fi
+  done
+
+  if (( ${#missing_plugins[@]} > 0 )); then
+    echo "Warning: Missing Oh My Zsh plugins: ${missing_plugins[*]}" >&2
+    echo "Install with: git clone https://github.com/zsh-users/PLUGIN_NAME \${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/PLUGIN_NAME" >&2
+  fi
+}
+
+plugins=(git zoxide fzf-tab fast-syntax-highlighting zsh-autosuggestions zsh-history-substring-search)
+
+# Check plugin dependencies
+check_plugin_deps
+
+# Zsh autosuggestion tweaks for smoother UX.
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_USE_ASYNC=1
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=60
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'   # subtle grey
 
 source $ZSH/oh-my-zsh.sh
+
+# --------------------------------------------------
+# History substring search (↑ / ↓)
+# --------------------------------------------------
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+HISTORY_SUBSTRING_SEARCH_HIGHLIGHT_FOUND='bg=blue,fg=white,bold'
+HISTORY_SUBSTRING_SEARCH_HIGHLIGHT_NOT_FOUND='bg=red,fg=white'
+
+# Initialize zoxide after Oh My Zsh for proper integration
+if command_exists zoxide; then
+  eval "$(zoxide init zsh)"
+fi
 
 # User configuration
 
@@ -82,11 +139,25 @@ source $ZSH/oh-my-zsh.sh
 export LANG=en_US.UTF-8
 
 # Preferred editor for local and remote sessions
-# if [[ -n $SSH_CONNECTION ]]; then
-#   export EDITOR='vim'
-# else
-#   export EDITOR='nvim'
-# fi
+if command_exists nvim; then
+  export EDITOR='nvim'
+  export VISUAL='nvim'
+elif command_exists vim; then
+  export EDITOR='vim'
+  export VISUAL='vim'
+elif command_exists vi; then
+  export EDITOR='vi'
+  export VISUAL='vi'
+else
+  export EDITOR='nano'
+  export VISUAL='nano'
+fi
+
+# Use different editor for SSH sessions if needed
+if [[ -n $SSH_CONNECTION ]] && command_exists vim; then
+  export EDITOR='vim'
+  export VISUAL='vim'
+fi
 
 # Compilation flags
 # export ARCHFLAGS="-arch $(uname -m)"
@@ -103,15 +174,54 @@ export LANG=en_US.UTF-8
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
+# Lazy loading for NVM to improve startup performance
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+nvm() {
+  unset -f nvm
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+  nvm "$@"
+}
+
+# Auto-load nvm on cd if .nvmrc exists
+autoload -U add-zsh-hook
+load-nvmrc() {
+  local nvmrc_path="$(nvm_find_nvmrc)"
+  if [ -n "$nvmrc_path" ]; then
+    local nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
+    if [ "$nvmrc_node_version" = "N/A" ]; then
+      nvm install
+    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
+      nvm use
+    fi
+  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
+    echo "Reverting to nvm default version"
+    nvm use default
+  fi
+}
+add-zsh-hook chpwd load-nvmrc
+
+# Handy helper to cut down on repetitive command -v checks.
+command_exists() { command -v "$1" >/dev/null 2>&1; }
+
+# XDG Base Directory Specification support
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+
+# Path hygiene: ensure personal bins appear early.
+path=(
+  "$HOME/.local/bin"
+  "$HOME/bin"
+  ${path[@]:-}
+)
+typeset -U path PATH
+export PATH
 
 export ZELLIJ_AUTO_ATTACH=true
 # export ZELLIJ_AUTO_EXIT=true
 # eval "$(zellij setup --generate-auto-start zsh)"
-
-eval "$(zoxide init zsh)"
 
 # =========================================================
 #  Modern, Robust, and Performant Zsh Configuration
@@ -122,22 +232,44 @@ eval "$(zoxide init zsh)"
 # =========================================================
 
 # ------------------------------------------------------------------
-# 1️⃣  Basic Zsh Options & History
+# 1️⃣  Basic Zsh Options & History (Performance Optimized)
 # ------------------------------------------------------------------
+# Directory navigation
 setopt autocd                  # `cd dir` → `cd dir`
-setopt correct                 # Auto‑correct mistyped commands
-setopt histignoredups          # Do not store duplicate history lines
-setopt sharehistory            # Share history live between all shells
+setopt autopushd               # Make cd push old directory onto stack
 setopt pushdminus              # `cd -` behaves like in bash
 setopt pushdtohome             # `cd` with no args goes to $HOME
+setopt pushdsilent             # Don't print directory stack
+setopt pushdignoredups         # Don't push duplicates
+
+# Command correction and completion
+setopt correct                 # Auto‑correct mistyped commands
+setopt correctall              # Correct all arguments in line
+
+# History optimization
+setopt histignoredups          # Do not store duplicate history lines
+setopt histignorespace         # Don't record commands starting with space
+setopt sharehistory            # Share history live between all shells
 setopt histreduceblanks        # Trim extra spaces in history entries
 setopt extendedhistory         # Store timestamps & command duration
-setopt extendedglob            # Adds vi‑style globbing
-setopt nomatch                 # Turns off the “no glob match error”
-setopt notify                  # Enables asynchronous‑job notifications
+setopt histverify              # Show expanded history before executing
+setopt histexpiredupsfirst     # Remove oldest duplicates first
+setopt histfindnodups          # Don't show duplicates in search
 
-# History file configuration
-HISTFILE=~/.zsh_history
+# Globbing and pattern matching
+setopt extendedglob            # Adds vi‑style globbing
+setopt globdots                # Include dotfiles in glob patterns
+setopt nomatch                 # Pass through unmatched patterns
+setopt numericglobsort         # Sort numeric filenames numerically
+
+# Job control
+setopt notify                  # Report job status immediately
+setopt longlistjobs            # List jobs in long format
+setopt nohup                   # Don't send HUP to running jobs on shell exit
+
+# History file configuration (XDG compliant)
+HISTFILE="${XDG_STATE_HOME}/zsh/history"
+[[ -d "${HISTFILE%/*}" ]] || mkdir -p "${HISTFILE%/*}"
 HISTSIZE=50000
 SAVEHIST=50000
 
@@ -148,105 +280,235 @@ unsetopt beep
 # ------------------------------------------------------------------
 # Pure is a fast, minimal prompt that shows git status, virtualenvs, etc.
 # If you do not have it installed, we fall back to the standard prompt.
-fpath+=($HOME/.zsh/pure)
-autoload -Uz promptinit; promptinit
-prompt pure || prompt default
+autoload -Uz promptinit && promptinit
+pure_candidate_paths=()
+if [[ -d "$HOME/.zsh/pure" ]]; then
+  pure_candidate_paths+=("$HOME/.zsh/pure")
+fi
+if command_exists brew; then
+  if brew_prefix="$(brew --prefix 2>/dev/null)"; then
+    brew_pure_dir="$brew_prefix/share/zsh/site-functions"
+    if [[ -d "$brew_pure_dir" ]] && [[ -f "$brew_pure_dir/prompt_pure_setup" ]]; then
+      pure_candidate_paths+=("$brew_pure_dir")
+    fi
+  fi
+fi
+
+if (( ${#pure_candidate_paths[@]} )); then
+  fpath+=("${pure_candidate_paths[@]}")
+  prompt pure || prompt default
+else
+  prompt default
+fi
 
 # ------------------------------------------------------------------
-# Alias `bat` to `batcat` if the real `bat` command is missing
+# Enhanced Completion Configuration
 # ------------------------------------------------------------------
-if ! command -v bat >/dev/null 2>&1; then
-    if command -v batcat >/dev/null 2>&1; then
-        alias bat='batcat'
-    else
-        echo "Neither bat nor batcat found."
-    fi
+# Use modern completion system
+autoload -Uz compinit
+# Check if we need to regenerate completion cache (once per day)
+if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
+  compinit -d "${XDG_CACHE_HOME}/zsh/zcompdump-${ZSH_VERSION}"
+else
+  compinit -C -d "${XDG_CACHE_HOME}/zsh/zcompdump-${ZSH_VERSION}"
 fi
+[[ -d "${XDG_CACHE_HOME}/zsh" ]] || mkdir -p "${XDG_CACHE_HOME}/zsh"
+
+# Enhanced completion styling
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
+zstyle ':completion:*:messages' format '%F{purple}-- %d --%f'
+zstyle ':completion:*:warnings' format '%F{red}-- No matches found --%f'
+zstyle ':completion:*:corrections' format '%F{green}-- %d (errors: %e) --%f'
+
+# Use LS_COLORS for file completion
+if [[ -n ${LS_COLORS:-} ]]; then
+  zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+fi
+
+# Performance optimizations
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME}/zsh/completion-cache"
+zstyle ':completion:*' accept-exact '*(N)'
+zstyle ':completion:*' squeeze-slashes true
+
+# Enhanced process completion
+zstyle ':completion:*:*:*:*:processes' command 'ps -u $USER -o pid,user,comm -w'
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#) ([0-9a-z-]#)*=01;34=0=01'
+
+# SSH/SCP/RSYNC completion from known hosts
+zstyle ':completion:*:(ssh|scp|rsync):*' tag-order 'hosts:-host:host hosts:-domain:domain hosts:-ipaddr:ip\ address *'
+zstyle ':completion:*:(scp|rsync):*' group-order users files all-files hosts-domain hosts-host hosts-ipaddr
+
+# fzf-tab tweaks
+zstyle ':fzf-tab:*' switch-group ',' '.'  # , and . to move between groups
+zstyle ':fzf-tab:*' fzf-bindings 'ctrl-y:preview-page-up' 'ctrl-e:preview-page-down'
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath 2>/dev/null || ls -1 $realpath'
+
 
 # ------------------------------------------------------------------
 # 3️⃣  Aliases – Modern replacements & safety aliases
 # ------------------------------------------------------------------
 # Keep the original grep handy (if you need classic behaviour)
-alias grep_orig='grep'              # classic grep
-alias grep='rg --smart-case'        # default to ripgrep
-alias cat='bat --paging=never --style=plain'  # colourized `cat`
-alias ls='eza --classify=auto --color=auto'     # modern ls (eza) with colour & classification
+alias grep_orig='grep'
+if command_exists rg; then
+  alias grep='rg --smart-case'
+fi
+if command_exists bat; then
+  alias cat='bat --paging=never --style=plain'
+elif command_exists batcat; then
+  alias bat='batcat'
+  alias cat='bat --paging=never --style=plain'
+fi
+if command_exists eza; then
+  alias ls='eza --classify=auto --color=auto'
+fi
 alias ..='cd ..'
 alias ...='cd ../..'
-alias v='nvim'
-
-# Helper: grep for processes (uses ripgrep under the hood)
-alias psg='ps aux | rg'             # use `rg` after aliasing grep
-
-# ------------------------------------------------------------------
-# Alias `fd` to `fdfind` if the real `fd` command is missing
-# ------------------------------------------------------------------
-if ! command -v fd >/dev/null 2>&1; then
-    alias fd=fdfind
+if command_exists nvim; then
+  alias v='nvim'
 fi
+if command_exists rg; then
+  alias psg='ps aux | rg'
+else
+  alias psg='ps aux | grep'
+fi
+if ! command_exists fd && command_exists fdfind; then
+  alias fd='fdfind'
+fi
+alias please='sudo $(fc -ln -1)'
+alias reload!='exec zsh'
+
 
 # ------------------------------------------------------------------
 # 4️⃣  fzf, fd, bat, eza – Default settings & keybindings
 # ------------------------------------------------------------------
 
-# Set up fzf key bindings and fuzzy completion
-source <(fzf --zsh)
+# Set up fzf key bindings and fuzzy completion with error handling
+if command_exists fzf; then
+  fzf_setup_success=false
 
-# Guard against missing tools – silently skip configuration if not found
-if command -v fd >/dev/null 2>&1; then
-  # Default command that fzf runs when you hit Ctrl‑T
-  export FZF_DEFAULT_COMMAND="fd --type file --hidden --follow --exclude .git"
+  if command_exists brew; then
+    if brew_prefix="$(brew --prefix 2>/dev/null)"; then
+      fzf_keybindings="$brew_prefix/opt/fzf/shell/key-bindings.zsh"
+      fzf_completion="$brew_prefix/opt/fzf/shell/completion.zsh"
+      if [[ -f "$fzf_keybindings" && -f "$fzf_completion" ]]; then
+        source "$fzf_keybindings" && source "$fzf_completion" && fzf_setup_success=true
+      fi
+    fi
+  fi
+
+  if [[ "$fzf_setup_success" = false ]]; then
+    # Try system-wide installation
+    if [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh && -f /usr/share/doc/fzf/examples/completion.zsh ]]; then
+      source /usr/share/doc/fzf/examples/key-bindings.zsh && source /usr/share/doc/fzf/examples/completion.zsh && fzf_setup_success=true
+    fi
+  fi
+
+  if [[ "$fzf_setup_success" = false ]]; then
+    # Fallback to fzf's built-in setup
+    if eval "$(fzf --zsh 2>/dev/null)"; then
+      fzf_setup_success=true
+    fi
+  fi
+
+  [[ "$fzf_setup_success" = false ]] && echo "Warning: fzf setup failed" >&2
+  unset fzf_setup_success fzf_keybindings fzf_completion
 fi
 
-# Preview is now unconditional: show bat output for files, short `eza` for dirs
-export FZF_DEFAULT_OPTS="
-  --height 50% --layout reverse --border
-  --preview-window 'up:40%:wrap'
-  --preview '
-    if [[ -d {} ]]; then
-      eza --long --git --ignore-glob=.git --no-user --no-time {} | head -40
-    else
-      bat --style=numbers --color=always {}
-    fi
-  '
-"
-# Define a function that checks which package manager exists and runs the right commands
-ksu() {
-    if command -v dnf >/dev/null 2>&1; then
-        echo "Using dnf..."
-        sudo dnf update -y; sudo dnf upgrade -y; sudo dnf clean all
-        npm install npm@latest -g; npm ls -g; npm up -g; npm ls -g
-        uv self update; uv tool upgrade --all; uv python upgrade; uv cache clean; uv cache prune
-        flatpak update -y; flatpak uninstall --delete-data --unused
-    elif command -v apt >/dev/null 2>&1; then
-        echo "Using apt..."
-        sudo apt update; sudo apt upgrade -y; sudo apt clean
-        npm install npm@latest -g; npm ls -g; npm up -g; npm ls -g
-        uv self update; uv tool upgrade --all; uv python upgrade; uv cache clean; uv cache prune
-        sudo snap refresh
-    else
-        echo "No supported package manager (dnf/apt) found."
-        return 1
-    fi
-}
+# Guard against missing tools – silently skip configuration if not found
+if command_exists fd; then
+  export FZF_DEFAULT_COMMAND='fd --type file --hidden --follow --exclude .git'
+  export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+fi
 
-# Alias to a convenient name
+export FZF_DEFAULT_OPTS=$(cat <<'FZF_OPTS'
+--height=50% --layout=reverse --border
+--preview-window=up,40%,wrap
+--bind=ctrl-y:preview-page-up,ctrl-e:preview-page-down
+--preview='if [[ -d {} ]]; then
+             if command_exists eza; then
+               eza --long --git --ignore-glob=.git --no-user --no-time {} | head -40
+             else
+               ls -la {}
+             fi
+           else
+             if command_exists bat; then
+               bat --style=numbers --color=always {}
+             else
+               cat {}
+             fi
+           fi'
+FZF_OPTS
+)
+# --------------------------------------------------
+# Update helper covering macOS & Linux package managers
+# --------------------------------------------------
+ksu() {
+  if command_exists brew; then
+    printf 'Using Homebrew...\n'
+    brew update && brew upgrade && brew cleanup
+  elif command_exists dnf; then
+    printf 'Using dnf...\n'
+    sudo dnf update -y && sudo dnf upgrade -y && sudo dnf clean all
+  elif command_exists apt; then
+    printf 'Using apt...\n'
+    sudo apt update && sudo apt upgrade -y && sudo apt autoremove -y && sudo apt clean
+  else
+    printf 'No supported package manager (brew/dnf/apt) found.\n'
+    return 1
+  fi
+
+  if command_exists npm; then
+    npm install -g npm@latest
+    npm outdated -g || true
+    npm update -g
+  fi
+
+  if command_exists uv; then
+    uv tool upgrade --all
+    uv python upgrade
+    uv cache clean
+    uv cache prune
+  fi
+
+  if command_exists flatpak; then
+    flatpak update -y
+    flatpak uninstall --delete-data --unused
+  fi
+
+  if command_exists snap; then
+    sudo snap refresh
+  fi
+}
 alias ksu='ksu'
 
 # ------------------------------------------------------------------
 # 7️⃣  Environment Variables & PATH
 # ------------------------------------------------------------------
-# export EDITOR="nvim"          # Default editor for functions
-export PAGER="less"           # Use less for paging
-export LESS="-R"              # Preserve ANSI colours in less
-export GPG_TTY=$(tty)         # Needed for gpg agent
-
-# Optional: start ssh‑agent if not already running
-if ! pgrep -u "$USER" ssh-agent > /dev/null; then
-#  eval "$(ssh-agent -c)"
-  eval "$(ssh-agent -c)" > /dev/null 2>&1
-  export SSH_AUTH_SOCK
+export PAGER='less'
+export LESS='-R'
+if [[ -t 1 ]]; then
+  export GPG_TTY=$(tty)
 fi
 
-# The line is added after uv installed
-. "$HOME/.local/bin/env"
+# Optional: start ssh-agent if not already running with error handling.
+if command_exists pgrep && command_exists ssh-agent; then
+  if ! pgrep -u "$USER" ssh-agent >/dev/null 2>&1; then
+    if ssh_agent_output="$(ssh-agent -s 2>/dev/null)"; then
+      eval "$ssh_agent_output" >/dev/null 2>&1
+    else
+      echo "Warning: Failed to start ssh-agent" >&2
+    fi
+    unset ssh_agent_output
+  fi
+fi
+
+# Load additional environment overrides if present.
+if [[ -s "$HOME/.local/bin/env" ]]; then
+  . "$HOME/.local/bin/env"
+fi
+
+# EOF
