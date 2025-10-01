@@ -231,32 +231,82 @@ fi
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# NVM loading for immediate availability
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+# --- NVM portable init for zsh (macOS + Linux) ---
+# Only run in interactive shells
+[[ -o interactive ]] || return
 
-# Auto-load nvm on cd if .nvmrc exists
-autoload -U add-zsh-hook
-load-nvmrc() {
-  if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-    return
+# Prefer Homebrew nvm on macOS, fall back to ~/.nvm (Linux or manual install)
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+
+# Try Homebrew first (macOS)
+if command -v brew >/dev/null 2>&1; then
+  _BREW_NVM_SH="$(brew --prefix nvm 2>/dev/null)/nvm.sh"
+  if [ -s "$_BREW_NVM_SH" ]; then
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"   # per brew caveats
+    NVM_SH="$_BREW_NVM_SH"
   fi
+fi
 
-  local nvmrc_path="$(nvm_find_nvmrc)"
+# Fallback to the standard installer location
+if [ -z "${NVM_SH:-}" ] && [ -s "$NVM_DIR/nvm.sh" ]; then
+  NVM_SH="$NVM_DIR/nvm.sh"
+fi
+
+# Lazy-load nvm when we actually need it
+_nvm_lazy_load() {
+  # If nvm is already loaded, skip
+  command -v nvm >/dev/null 2>&1 && return
+  [ -n "$NVM_SH" ] && . "$NVM_SH"
+}
+
+# zsh: auto-switch node version when entering a dir with .nvmrc
+autoload -U add-zsh-hook
+
+load-nvmrc() {
+  # Ensure nvm is available before we try to use it
+  _nvm_lazy_load
+  command -v nvm >/dev/null 2>&1 || return
+
+  local nvmrc_path
+  nvmrc_path="$(nvm_find_nvmrc)"
+
   if [ -n "$nvmrc_path" ]; then
-    local nvmrc_node_version=$(nvm version "$(cat "${nvmrc_path}")")
-    if [ "$nvmrc_node_version" = "N/A" ]; then
+    local wanted
+    wanted="$(nvm version "$(cat "$nvmrc_path")")"
+    if [ "$wanted" = "N/A" ]; then
       nvm install
-    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
+    elif [ "$wanted" != "$(nvm version)" ]; then
       nvm use
     fi
-  elif [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && [ "$(nvm version)" != "$(nvm version default)" ]; then
-    echo "Reverting to nvm default version"
-    nvm use default
+  else
+    # No .nvmrc here, revert to default if we were previously using a project version
+    if [ -n "$(PWD=$OLDPWD nvm_find_nvmrc)" ] && \
+       [ "$(nvm version)" != "$(nvm version default)" ]; then
+      echo "Reverting to nvm default version"
+      nvm use default >/dev/null
+    fi
   fi
 }
+
 add-zsh-hook chpwd load-nvmrc
+
+# Also run once on shell startup (for the initial directory)
+load-nvmrc
+
+# Optional: speed up `node`/`npm` first use by lazy-loading nvm
+# Define lightweight shims that pull nvm in on first call
+for _cmd in node npm npx corepack; do
+  eval "
+  $_cmd() {
+    _nvm_lazy_load
+    command $_cmd \"\$@\"
+  }
+  "
+done
+# --- end NVM portable init ---
+
+export LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib $LDFLAGS"
+export CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include $CPPFLAGS"
 
 # XDG Base Directory Specification support
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
